@@ -97,18 +97,13 @@ export interface IAppState {
 	isValidContacts(): boolean;
 
 	// Вспомогательные методы
-	// formatCurrency(value: number): string;
+	formatCurrency(value: number): string;
 
 	// Методы для работы с модальными окнами
 	openModal(modal: AppStateModals): void;
 	setMessage(message: string | null, isError: boolean): void;
 }
 
-export interface AppStateSettings {
-	formatCurrency: (value: number) => string;
-	onChange: (changed: AppStateChanges) => void;
-}
-
 export interface AppStateConstructor {
-	new (api: ILarekApi, settings: AppStateSettings): IAppState;
+	new (api: ILarekApi, onChange: (changed: AppStateChanges) => void): IAppState;
 }

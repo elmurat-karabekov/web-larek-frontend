@@ -1,7 +1,6 @@
 import {
 	AppStateChanges,
 	AppStateModals,
-	AppStateSettings,
 	IAppState,
 	IContacts,
 	ILarekApi,
@@ -29,7 +28,10 @@ export class AppState implements IAppState {
 	modalMessage: string | null = null;
 	isError = false;
 
-	constructor(protected api: ILarekApi, protected settings: AppStateSettings) {}
+	constructor(
+		protected api: ILarekApi,
+		protected onChange: (changed: AppStateChanges) => void
+	) {}
 
 	get basketTotal(): number {
 		return Array.from(this.basket.values()).reduce<number>(
@@ -57,14 +59,14 @@ export class AppState implements IAppState {
 		for (const product of products) {
 			this.products.set(product.id, product);
 		}
-		this.notifyChanged(AppStateChanges.products);
+		this.onChange(AppStateChanges.products);
 	}
 
 	async orderProducts(): Promise<IOrderResult> {
 		try {
 			const result = await this.api.orderProducts(this.order);
 			this.basket.clear();
-			this.notifyChanged(AppStateChanges.basket);
+			this.onChange(AppStateChanges.basket);
 			return result;
 		} catch (err: unknown) {
 			if (err instanceof Error) {
@@ -80,11 +82,11 @@ export class AppState implements IAppState {
 	previewProduct(id: string | null): void {
 		if (!id) {
 			this.previewedProductId = null;
-			this.notifyChanged(AppStateChanges.previewProduct);
+			this.onChange(AppStateChanges.previewProduct);
 		}
 		if (this.products.has(id)) {
 			this.previewedProductId = id;
-			this.notifyChanged(AppStateChanges.previewProduct);
+			this.onChange(AppStateChanges.previewProduct);
 		} else {
 			throw new Error(`Invalid movie id: ${id}`);
 		}
@@ -97,7 +99,7 @@ export class AppState implements IAppState {
 			!this.basket.has(id)
 		) {
 			this.basket.set(id, this.products.get(id));
-			this.notifyChanged(AppStateChanges.basket);
+			this.onChange(AppStateChanges.basket);
 		} else {
 			throw new Error(`Product ${id} does not exist or already in basket`);
 		}
@@ -106,7 +108,7 @@ export class AppState implements IAppState {
 	removeProductFromBasket(id: string): void {
 		if (this.basket.has(id)) {
 			this.basket.delete(id);
-			this.notifyChanged(AppStateChanges.basket);
+			this.onChange(AppStateChanges.basket);
 		} else {
 			throw new Error(`Product ${id} does not exist in the basket`);
 		}
@@ -117,7 +119,7 @@ export class AppState implements IAppState {
 			...this.orderInfo,
 			...orderInfo,
 		};
-		this.notifyChanged(AppStateChanges.orderInfo);
+		this.onChange(AppStateChanges.orderInfo);
 	}
 
 	isValidOrderInfo(): boolean {
@@ -136,7 +138,7 @@ export class AppState implements IAppState {
 			...this.contacts,
 			...contacts,
 		};
-		this.notifyChanged(AppStateChanges.contacts);
+		this.onChange(AppStateChanges.contacts);
 	}
 
 	isValidContacts(): boolean {
@@ -165,13 +167,8 @@ export class AppState implements IAppState {
 		}
 		if (this.openedModal !== modal) {
 			this.openedModal = modal;
-			this.notifyChanged(AppStateChanges.modal);
+			this.onChange(AppStateChanges.modal);
 		}
-	}
-
-	protected notifyChanged(changed: AppStateChanges): void {
-		console.log(changed);
-		// this.settings.onChange(changed);
 	}
 
 	protected validateOrderInfo(orderInfo: Partial<IOrderInfo>): string | null {
@@ -207,6 +204,10 @@ export class AppState implements IAppState {
 	setMessage(message: string | null, isError = false): void {
 		this.modalMessage = message;
 		this.isError = isError;
-		this.notifyChanged(AppStateChanges.modalMessage);
+		this.onChange(AppStateChanges.modalMessage);
+	}
+
+	formatCurrency(value: number): string {
+		return `${value} синапсов`;
 	}
 }
