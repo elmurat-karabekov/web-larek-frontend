@@ -45,3 +45,70 @@ export interface ILarekApi {
 	getProducts: () => Promise<IProduct[]>;
 	orderProducts: (order: IOrder) => Promise<IOrderResult>;
 }
+
+export enum AppStateModals {
+	preview = 'modal:preview',
+	basket = 'modal:basket',
+	orderInfo = 'modal:orderInfo',
+	contacts = 'modal:contacts',
+	success = 'modal:success',
+	none = 'modal:none',
+}
+
+export enum AppStateChanges {
+	products = 'change:products', // when list of product is loaded: [] => [.., .., ...]
+	previewProduct = 'change:previewProduct', // when a product is selected for preview
+	modal = 'change:modal', // open/close modal
+	modalMessage = 'change:modalMessage', // errors
+	basket = 'change:basket', // add/remove product from the basket
+	orderInfo = 'change:orderInfo',
+	contacts = 'change:contacts',
+}
+
+// Интерфейс модели данных приложения
+export interface IAppState {
+	// Загружаемые с сервера данные
+	products: Map<string, IProduct>;
+
+	// Заполняемые пользователем данные
+	basket: Map<string, IProduct>;
+	basketTotal: number;
+	orderInfo: IOrderInfo;
+	contacts: IContacts;
+	order: IOrder;
+
+	// Состояние интерфейса
+	previewedProductId: string | null;
+	openedModal: AppStateModals;
+	modalMessage: string | null;
+	isError: boolean;
+
+	// Действия с API
+	loadProducts(): Promise<void>;
+	orderProducts(): Promise<IOrderResult>;
+
+	// Пользовательские действия
+	previewProduct(id: string): void;
+	addProductToBasket(id: string): void;
+	removeProductFromBasket(id: string): void;
+	fillOrderInfo(orderInfo: Partial<IOrderInfo>): void;
+	isValidOrderInfo(): boolean;
+	fillContacts(contacts: Partial<IContacts>): void;
+	isValidContacts(): boolean;
+
+	// Вспомогательные методы
+	// formatCurrency(value: number): string;
+
+	// Методы для работы с модальными окнами
+	openModal(modal: AppStateModals): void;
+	setMessage(message: string | null, isError: boolean): void;
+}
+
+export interface AppStateSettings {
+	formatCurrency: (value: number) => string;
+	onChange: (changed: AppStateChanges) => void;
+}
+
+export interface AppStateConstructor {
+	new (api: ILarekApi, settings: AppStateSettings): IAppState;
+}
