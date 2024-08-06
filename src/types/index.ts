@@ -65,6 +65,16 @@ export enum AppStateChanges {
 	contacts = 'change:contacts',
 }
 
+export enum UIActions {
+	openBasket = 'ui:openBasket',
+	openPreview = 'ui:openPreview',
+	removeTicket = 'ui:removeTicket',
+	fillContacts = 'ui:fillContacts',
+	makeOrder = 'ui:makeOrder',
+	closeModal = 'ui:closeModal',
+	goBack = 'ui:goBack',
+}
+
 // Интерфейс модели данных приложения
 export interface IAppState {
 	// Загружаемые с сервера данные
@@ -106,4 +116,13 @@ export interface IAppState {
 
 export interface AppStateConstructor {
 	new (api: ILarekApi, onChange: (changed: AppStateChanges) => void): IAppState;
+}
+
+// Классы отображения
+export interface ICard {
+	category: string;
+	title: string;
+	image: string;
+	price: string;
+	_id: string;
 }

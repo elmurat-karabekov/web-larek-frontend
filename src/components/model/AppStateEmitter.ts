@@ -1,11 +1,11 @@
 import {
+	IAppState,
 	AppStateModals,
+	ILarekApi,
 	AppStateConstructor,
 	AppStateChanges,
-	ILarekApi,
-	IAppState,
-} from '../types';
-import { IEvents } from './base/events';
+} from '../../types';
+import { IEvents } from '../base/events';
 
 export class AppStateEmitter {
 	public model: IAppState;

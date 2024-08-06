@@ -8,7 +8,7 @@ import {
 	IOrderInfo,
 	IOrderResult,
 	IProduct,
-} from '../types';
+} from '../../types';
 
 export class AppState implements IAppState {
 	products: Map<string, IProduct> = new Map<string, IProduct>();
@@ -208,6 +208,6 @@ export class AppState implements IAppState {
 	}
 
 	formatCurrency(value: number): string {
-		return `${value} синапсов`;
+		return value ? `${value} синапсов` : 'Бесценно';
 	}
 }

@@ -5,7 +5,7 @@ import {
 	IOrder,
 	IOrderResult,
 	IApi,
-} from '../types';
+} from '../../types';
 
 export class LarekApi implements ILarekApi {
 	private baseApi: IApi;
