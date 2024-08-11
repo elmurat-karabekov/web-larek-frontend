@@ -23,7 +23,7 @@ export class AppState implements IAppState {
 		phone: '',
 	};
 
-	previewedProductId: string | null = null;
+	previewProductId: string | null = null;
 	openedModal: AppStateModals = AppStateModals.none;
 	modalMessage: string | null = null;
 	isError = false;
@@ -79,19 +79,6 @@ export class AppState implements IAppState {
 	}
 
 	// user actions
-	previewProduct(id: string | null): void {
-		if (!id) {
-			this.previewedProductId = null;
-			this.onChange(AppStateChanges.previewProduct);
-		}
-		if (this.products.has(id)) {
-			this.previewedProductId = id;
-			this.onChange(AppStateChanges.previewProduct);
-		} else {
-			throw new Error(`Invalid movie id: ${id}`);
-		}
-	}
-
 	addProductToBasket(id: string): void {
 		if (
 			this.products.has(id) &&
@@ -101,7 +88,9 @@ export class AppState implements IAppState {
 			this.basket.set(id, this.products.get(id));
 			this.onChange(AppStateChanges.basket);
 		} else {
-			throw new Error(`Product ${id} does not exist or already in basket`);
+			throw new Error(
+				`Product ${id} does not exist or already in basket or is invaluable`
+			);
 		}
 	}
 
@@ -152,12 +141,14 @@ export class AppState implements IAppState {
 		}
 	}
 
-	openModal(modal: AppStateModals): void {
+	openModal(modal: AppStateModals, previewId?: string): void {
 		switch (modal) {
 			case AppStateModals.preview:
-				if (!this.previewedProductId) {
+				if (!previewId) {
+					this.previewProductId = null;
 					throw new Error(`No product selected for preview`);
 				}
+				this.previewProductId = previewId;
 				break;
 			case AppStateModals.orderInfo:
 				if (this.basket.size === 0) {
@@ -205,9 +196,5 @@ export class AppState implements IAppState {
 		this.modalMessage = message;
 		this.isError = isError;
 		this.onChange(AppStateChanges.modalMessage);
-	}
-
-	formatCurrency(value: number): string {
-		return value ? `${value} синапсов` : 'Бесценно';
 	}
 }

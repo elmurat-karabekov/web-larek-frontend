@@ -34,9 +34,15 @@
 			<main class="gallery"></main>
 		</div>
 
+		<div class="modal" id="modal-container">
+			<div class="modal__container">
+				<button class="modal__close" aria-label="закрыть"></button>
+				<div class="modal__content"></div>
+			</div>
+		</div>
+
 		<template id="card-catalog">
-			<button class="gallery__item card">
-				<!-- need to add .card__category_{soft/hard/etc...} -->
+			<button class="gallery__item card card_catalog">
 				<span class="card__category"></span>
 				<h2 class="card__title"></h2>
 				<img class="card__image" src="" alt="" />
@@ -44,20 +50,10 @@
 			</button>
 		</template>
 
-		<template id="modal">
-			<div class="modal">
-				<div class="modal__container">
-					<button class="modal__close" aria-label="закрыть"></button>
-					<div class="modal__content"></div>
-				</div>
-			</div>
-		</template>
-
 		<template id="card-preview">
 			<div class="card card_full">
 				<img class="card__image" src="" alt="" />
 				<div class="card__column">
-					<!-- need to add .card__category_{soft/hard/etc...} -->
 					<span class="card__category"></span>
 					<h2 class="card__title"></h2>
 					<p class="card__text"></p>

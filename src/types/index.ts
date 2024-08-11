@@ -68,7 +68,8 @@ export enum AppStateChanges {
 export enum UIActions {
 	openBasket = 'ui:openBasket',
 	openPreview = 'ui:openPreview',
-	removeTicket = 'ui:removeTicket',
+	cardButtonAction = 'ui:cardButtonAction',
+	removeProduct = 'ui:removeProduct',
 	fillContacts = 'ui:fillContacts',
 	makeOrder = 'ui:makeOrder',
 	closeModal = 'ui:closeModal',
@@ -88,7 +89,7 @@ export interface IAppState {
 	order: IOrder;
 
 	// Состояние интерфейса
-	previewedProductId: string | null;
+	previewProductId: string | null;
 	openedModal: AppStateModals;
 	modalMessage: string | null;
 	isError: boolean;
@@ -98,7 +99,6 @@ export interface IAppState {
 	orderProducts(): Promise<IOrderResult>;
 
 	// Пользовательские действия
-	previewProduct(id: string): void;
 	addProductToBasket(id: string): void;
 	removeProductFromBasket(id: string): void;
 	fillOrderInfo(orderInfo: Partial<IOrderInfo>): void;
@@ -107,10 +107,10 @@ export interface IAppState {
 	isValidContacts(): boolean;
 
 	// Вспомогательные методы
-	formatCurrency(value: number): string;
+	// formatProductData(product: IProduct): Omit<IProductData, 'isInBasket'>;
 
 	// Методы для работы с модальными окнами
-	openModal(modal: AppStateModals): void;
+	openModal(modal: AppStateModals, previewId?: string): void;
 	setMessage(message: string | null, isError: boolean): void;
 }
 
@@ -118,11 +118,14 @@ export interface AppStateConstructor {
 	new (api: ILarekApi, onChange: (changed: AppStateChanges) => void): IAppState;
 }
 
-// Классы отображения
-export interface ICard {
-	category: string;
-	title: string;
-	image: string;
-	price: string;
-	_id: string;
+// Интерфейсы классов отображения
+export interface ICardProps extends IProduct {
+	isInBasket: boolean;
+	basketItemIndex: number;
+}
+
+export interface IBasketProps {
+	items: HTMLElement[];
+	isDisabled: boolean;
+	total: number;
 }

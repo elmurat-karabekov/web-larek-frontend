@@ -31,15 +31,11 @@ export class AppStateEmitter {
 				break;
 			case AppStateChanges.basket:
 				this.broker.emit(changed, {
-					total: this.model.basketTotal,
 					items: Array.from(this.model.basket.values()),
 				});
 				break;
 			case AppStateChanges.products:
 				this.broker.emit(changed, Array.from(this.model.products.values()));
-				break;
-			case AppStateChanges.previewProduct:
-				this.broker.emit(changed, { id: this.model.previewedProductId });
 				break;
 			case AppStateChanges.orderInfo:
 				this.broker.emit(changed, this.model.orderInfo);
