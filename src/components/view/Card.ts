@@ -1,10 +1,9 @@
-import { ICardProps, IProduct, UIActions } from '../../types';
+import { ICardProps, UIActions } from '../../types';
 import { ensureElement } from '../../utils/utils';
 import { Component } from '../base/Component';
 import { IEvents } from '../base/events';
 
 export class Card extends Component<ICardProps> {
-	// TODO: Component<T> - T???
 	protected events: IEvents;
 
 	protected _id: string;
@@ -25,7 +24,7 @@ export class Card extends Component<ICardProps> {
 		this._title = ensureElement<HTMLElement>('.card__title', container);
 		this._price = ensureElement<HTMLElement>('.card__price', container);
 
-		// ensure emlements specific to Card Class implementations
+		// ensure emlements specific to Card Class implementations (i.e _catalog, _full, _compact)
 		this.ensureCardElements.call(this, container);
 		this.ensureCardPreviewElements.call(this, container);
 		this.ensureBasketItemElements.call(this, container);

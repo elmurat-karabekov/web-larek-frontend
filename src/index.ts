@@ -1,24 +1,32 @@
 import { AppState } from './components/model/AppState';
-import { AppStateEmitter } from './components/model/AppStateEmitter';
 import { Api } from './components/base/api';
 import { EventEmitter } from './components/base/events';
 import { Card } from './components/view/Card';
 import { LarekApi } from './components/model/LarekApi';
 import { Page } from './components/view/Page';
 import './scss/styles.scss';
-import { AppStateChanges, AppStateModals, IProduct, UIActions } from './types';
+import {
+	AppStateChanges,
+	AppModals,
+	IOrderInfo,
+	IProduct,
+	UIActions,
+} from './types';
 import { API_URL, CDN_URL } from './utils/constants';
-import { cloneTemplate, createElement, ensureElement } from './utils/utils';
+import { cloneTemplate, ensureElement } from './utils/utils';
 import { Modal } from './components/view/common/Modal';
 import { Basket } from './components/view/Basket';
+import { OrderInfoForm } from './components/view/OrderInfoForm';
 
-const broker = new EventEmitter();
-
+const events = new EventEmitter();
 const baseApi = new Api(API_URL);
 const larekApi = new LarekApi(baseApi, CDN_URL);
 
+// Модель данных приложения
+const app = new AppState(larekApi, events);
+
 // Чтобы мониторить все события, для отладки
-broker.onAll(({ eventName, data }) => {
+events.onAll(({ eventName, data }) => {
 	console.log(eventName, data);
 });
 
@@ -32,93 +40,117 @@ const contactsTemplate = ensureElement<HTMLTemplateElement>('#contacts');
 const successTemplate = ensureElement<HTMLTemplateElement>('#success');
 
 // Все отображения внутри модалки
-const preview = new Card(cloneTemplate(cardPreviewTemplate), broker);
-const basket = new Basket(cloneTemplate(basketTemplate), broker);
-
-// Модель данных приложения
-const app = new AppStateEmitter(broker, larekApi, AppState);
+const preview = new Card(cloneTemplate(cardPreviewTemplate), events);
+const basket = new Basket(cloneTemplate(basketTemplate), events);
+const orderInfoForm = new OrderInfoForm(
+	cloneTemplate(orderInfoTemplate),
+	events
+);
 
 // Глобальные контейнеры
-const page = new Page(document.body, broker);
-const modal = new Modal(ensureElement<HTMLElement>('#modal-container'), broker);
+const page = new Page(document.body, events);
+const modal = new Modal(ensureElement<HTMLElement>('#modal-container'), events);
 
 // Subscribe to UI events
-broker.on(UIActions.openPreview, (data: { id: string }) => {
-	app.model.openModal.call(app.model, AppStateModals.preview, data.id);
+events.on(UIActions.openPreview, (data: { id: string }) => {
+	app.openModal.call(app, AppModals.preview, data.id);
 });
 
-broker.on(UIActions.cardButtonAction, (data: { id: string }) => {
-	if (app.model.basket.has(data.id)) {
-		app.model.removeProductFromBasket.call(app.model, data.id);
+events.on(UIActions.cardButtonAction, (data: { id: string }) => {
+	if (app.basketItems.has(data.id)) {
+		app.removeProductFromBasket.call(app, data.id);
 	} else {
-		app.model.addProductToBasket.call(app.model, data.id);
+		app.addProductToBasket.call(app, data.id);
 	}
-	preview.isInBasket = app.model.basket.has(data.id);
+	preview.isInBasket = app.basketItems.has(data.id);
 });
 
-broker.on(
-	UIActions.openBasket,
-	app.model.openModal.bind(app.model, AppStateModals.basket)
-);
+events.on(UIActions.openBasket, app.openModal.bind(app, AppModals.basket));
 
-broker.on(UIActions.removeProduct, (data: { id: string }) => {
-	app.model.removeProductFromBasket.call(app.model, data.id);
+events.on(UIActions.removeProduct, (data: { id: string }) => {
+	app.removeProductFromBasket.call(app, data.id);
 });
 
-broker.on(
-	UIActions.closeModal,
-	app.model.openModal.bind(app.model, AppStateModals.none)
+events.on(
+	UIActions.openOrderInfo,
+	app.openModal.bind(app, AppModals.orderInfo)
 );
+
+events.on(UIActions.fillOrderInfo, (data: Partial<IOrderInfo>) => {
+	app.fillOrderInfo.call(app, data);
+});
+
+events.on(UIActions.closeModal, app.openModal.bind(app, AppModals.none));
 
 // Subscribe to model events
-broker.on(AppStateChanges.products, (products: IProduct[]) => {
+events.on(AppStateChanges.products, (products: IProduct[]) => {
 	page.catalog = products.map((product) => {
-		const card = new Card(cloneTemplate(cardCatalogTemplate), broker);
+		const card = new Card(cloneTemplate(cardCatalogTemplate), events);
 		return card.render({
 			...product,
 		});
 	});
 });
 
-broker.on(AppStateChanges.basket, () => {
-	page.counter = app.model.basket.size;
+events.on(AppStateChanges.basketItems, () => {
+	page.counter = app.basketItems.size;
 
 	basket.render({
-		items: Array.from(app.model.basket.values()).map((item, idx) => {
-			const basketItem = new Card(cloneTemplate(cardBasketTemplate), broker);
+		items: Array.from(app.basketItems.values()).map((item, idx) => {
+			const basketItem = new Card(cloneTemplate(cardBasketTemplate), events);
 			return basketItem.render({
 				...item,
 				basketItemIndex: idx + 1,
 			});
 		}),
-		isDisabled: app.model.basket.size < 1,
-		total: app.model.basketTotal,
+		isDisabled: app.basketItems.size < 1,
+		total: app.basketTotal,
 	});
 });
 
-broker.on(AppStateModals.preview, () => {
+events.on(AppStateChanges.orderInfo, () => {
+	console.log('hello');
+
+	orderInfoForm.render({
+		...app.orderInfo,
+		valid: Boolean(app.modalMessage),
+		errors: app.modalMessage,
+	});
+});
+
+events.on(AppModals.preview, () => {
 	modal.render({
 		content: preview.render({
-			...app.model.products.get(app.model.previewProductId),
-			isInBasket: app.model.basket.has(app.model.previewProductId),
+			...app.products.get(app.previewProductId),
+			isInBasket: app.basketItems.has(app.previewProductId),
 		}),
 	});
 });
 
-broker.on(AppStateModals.basket, () => {
+events.on(AppModals.basket, () => {
 	modal.render({
 		content: basket.render({
-			items: Array.from(app.model.basket.values()).map((item, idx) => {
-				const basketItem = new Card(cloneTemplate(cardBasketTemplate), broker);
+			items: Array.from(app.basketItems.values()).map((item, idx) => {
+				const basketItem = new Card(cloneTemplate(cardBasketTemplate), events);
 				return basketItem.render({
 					...item,
 					basketItemIndex: idx + 1,
 				});
 			}),
-			isDisabled: app.model.basket.size < 1,
-			total: app.model.basketTotal,
+			isDisabled: app.basketItems.size < 1,
+			total: app.basketTotal,
 		}),
 	});
 });
 
-app.model.loadProducts();
+events.on(AppModals.orderInfo, () => {
+	modal.render({
+		content: orderInfoForm.render({
+			...app.orderInfo,
+			valid: Boolean(app.modalMessage),
+			errors: '',
+		}),
+	});
+});
+
+app.loadProducts();

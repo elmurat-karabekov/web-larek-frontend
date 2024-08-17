@@ -14,6 +14,10 @@ export class Basket extends Component<IBasketProps> {
 		this._items = ensureElement<HTMLElement>('.basket__list', container);
 		this._total = ensureElement<HTMLElement>('.basket__price', container);
 		this._next = ensureElement<HTMLButtonElement>('.basket__button', container);
+
+		this._next.addEventListener('click', () =>
+			this.events.emit(UIActions.openOrderInfo)
+		);
 	}
 
 	set items(items: HTMLElement[]) {

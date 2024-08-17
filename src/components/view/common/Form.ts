@@ -1,10 +1,11 @@
+import { UIActions } from '../../../types';
 import { ensureElement } from '../../../utils/utils';
 import { Component } from '../../base/Component';
 import { IEvents } from '../../base/events';
 
 interface IFormState {
 	valid: boolean;
-	errors: string[];
+	errors: string;
 }
 
 export class Form<T> extends Component<IFormState> {
@@ -34,9 +35,8 @@ export class Form<T> extends Component<IFormState> {
 	}
 
 	protected onInputChange(field: keyof T, value: string) {
-		this.events.emit(`${this.container.name}.${String(field)}:change`, {
-			field,
-			value,
+		this.events.emit(UIActions.fillOrderInfo, {
+			[field]: value,
 		});
 	}
 

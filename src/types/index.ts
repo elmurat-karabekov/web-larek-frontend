@@ -15,7 +15,7 @@ export interface IProduct {
 }
 
 export interface IOrderInfo {
-	payment: string;
+	method: 'card' | 'cash';
 	address: string;
 }
 
@@ -46,7 +46,7 @@ export interface ILarekApi {
 	orderProducts: (order: IOrder) => Promise<IOrderResult>;
 }
 
-export enum AppStateModals {
+export enum AppModals {
 	preview = 'modal:preview',
 	basket = 'modal:basket',
 	orderInfo = 'modal:orderInfo',
@@ -56,11 +56,11 @@ export enum AppStateModals {
 }
 
 export enum AppStateChanges {
-	products = 'change:products', // when list of product is loaded: [] => [.., .., ...]
-	previewProduct = 'change:previewProduct', // when a product is selected for preview
-	modal = 'change:modal', // open/close modal
-	modalMessage = 'change:modalMessage', // errors
-	basket = 'change:basket', // add/remove product from the basket
+	products = 'change:products',
+	previewProduct = 'change:previewProduct',
+	modal = 'change:modal',
+	modalMessage = 'change:modalMessage',
+	basketItems = 'change:basketItems',
 	orderInfo = 'change:orderInfo',
 	contacts = 'change:contacts',
 }
@@ -70,6 +70,8 @@ export enum UIActions {
 	openPreview = 'ui:openPreview',
 	cardButtonAction = 'ui:cardButtonAction',
 	removeProduct = 'ui:removeProduct',
+	openOrderInfo = 'ui:openOrderInfo',
+	fillOrderInfo = 'ui:fillOrderInfo',
 	fillContacts = 'ui:fillContacts',
 	makeOrder = 'ui:makeOrder',
 	closeModal = 'ui:closeModal',
@@ -82,7 +84,7 @@ export interface IAppState {
 	products: Map<string, IProduct>;
 
 	// Заполняемые пользователем данные
-	basket: Map<string, IProduct>;
+	basketItems: Map<string, IProduct>;
 	basketTotal: number;
 	orderInfo: IOrderInfo;
 	contacts: IContacts;
@@ -90,9 +92,10 @@ export interface IAppState {
 
 	// Состояние интерфейса
 	previewProductId: string | null;
-	openedModal: AppStateModals;
-	modalMessage: string | null;
-	isError: boolean;
+	previousModal: AppModals;
+	currentModal: AppModals;
+	modalMessage: string;
+	isValid: boolean;
 
 	// Действия с API
 	loadProducts(): Promise<void>;
@@ -102,20 +105,10 @@ export interface IAppState {
 	addProductToBasket(id: string): void;
 	removeProductFromBasket(id: string): void;
 	fillOrderInfo(orderInfo: Partial<IOrderInfo>): void;
-	isValidOrderInfo(): boolean;
 	fillContacts(contacts: Partial<IContacts>): void;
-	isValidContacts(): boolean;
-
-	// Вспомогательные методы
-	// formatProductData(product: IProduct): Omit<IProductData, 'isInBasket'>;
 
 	// Методы для работы с модальными окнами
-	openModal(modal: AppStateModals, previewId?: string): void;
-	setMessage(message: string | null, isError: boolean): void;
-}
-
-export interface AppStateConstructor {
-	new (api: ILarekApi, onChange: (changed: AppStateChanges) => void): IAppState;
+	openModal(modal: AppModals, previewId?: string): void;
 }
 
 // Интерфейсы классов отображения
