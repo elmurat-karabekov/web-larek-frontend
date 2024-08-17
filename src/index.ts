@@ -53,7 +53,7 @@ const modal = new Modal(ensureElement<HTMLElement>('#modal-container'), events);
 
 // Subscribe to UI events
 events.on(UIActions.openPreview, (data: { id: string }) => {
-	app.openModal.call(app, AppModals.preview, data.id);
+	app.openModal(AppModals.preview, data.id);
 });
 
 events.on(UIActions.cardButtonAction, (data: { id: string }) => {
@@ -109,14 +109,19 @@ events.on(AppStateChanges.basketItems, () => {
 });
 
 events.on(AppStateChanges.orderInfo, () => {
-	console.log('hello');
-
 	orderInfoForm.render({
 		...app.orderInfo,
 		valid: Boolean(app.modalMessage),
 		errors: app.modalMessage,
 	});
 });
+
+events.on(
+	AppStateChanges.modal,
+	(appModal: { previous: AppModals; current: AppModals }) => {
+		page.locked = modal.open = appModal.current !== AppModals.none;
+	}
+);
 
 events.on(AppModals.preview, () => {
 	modal.render({

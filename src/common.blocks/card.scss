@@ -85,8 +85,16 @@
 	&__button {
 		background-color: $error;
 
+		&:hover {
+			background-color: $hoverError;
+		}
+
 		&_is-active {
 			background-color: $secondary;
+
+			&:hover {
+				background-color: $hover;
+			}
 		}
 	}
 }

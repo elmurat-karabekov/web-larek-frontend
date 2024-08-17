@@ -60,7 +60,10 @@ export class AppState implements IAppState {
 		for (const product of products) {
 			this.products.set(product.id, product);
 		}
-		this.events.emit(AppStateChanges.products);
+		this.events.emit(
+			AppStateChanges.products,
+			Array.from(this.products.values())
+		);
 	}
 
 	async orderProducts(): Promise<IOrderResult> {
@@ -139,7 +142,12 @@ export class AppState implements IAppState {
 		}
 		if (this.currentModal !== modal) {
 			this.currentModal = modal;
-			// this.onChange(AppStateChanges.modal);
+			this.events.emit(AppStateChanges.modal, {
+				previous: this.previousModal,
+				current: this.currentModal,
+			});
+			this.events.emit(this.currentModal);
+			this.previousModal = this.currentModal;
 		}
 	}
 

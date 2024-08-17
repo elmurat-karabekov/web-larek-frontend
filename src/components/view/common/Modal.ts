@@ -5,6 +5,7 @@ import { IEvents } from '../../base/events';
 
 interface IModalData {
 	content: HTMLElement;
+	open: boolean;
 }
 
 export class Modal extends Component<IModalData> {
@@ -30,20 +31,17 @@ export class Modal extends Component<IModalData> {
 		this._content.replaceChildren(value);
 	}
 
-	open() {
-		this.container.classList.add('modal_active');
-		this.events.emit('modal:open');
+	set open(isOpen: boolean) {
+		this.toggleClass(this.container, 'modal_active', isOpen);
 	}
 
 	close() {
-		this.container.classList.remove('modal_active');
 		this.content = null;
 		this.events.emit(UIActions.closeModal);
 	}
 
-	render(data: IModalData): HTMLElement {
+	render(data: Partial<IModalData>): HTMLElement {
 		super.render(data);
-		this.open();
 		return this.container;
 	}
 }
