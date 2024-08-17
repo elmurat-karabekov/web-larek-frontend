@@ -16,7 +16,7 @@ export class AppState implements IAppState {
 	basketItems: Map<string, IProduct> = new Map<string, IProduct>();
 
 	orderInfo: IOrderInfo = {
-		method: 'card', // default payment method
+		payment: 'card', // default payment method
 		address: '',
 	};
 
@@ -29,8 +29,7 @@ export class AppState implements IAppState {
 
 	previousModal: AppModals = AppModals.none;
 	currentModal: AppModals = AppModals.none;
-	modalMessage = '';
-	isValid = false;
+	protected _modalMessage = '';
 
 	constructor(protected api: ILarekApi, protected events: IEvents) {}
 
@@ -52,6 +51,10 @@ export class AppState implements IAppState {
 		};
 	}
 
+	get modalMessage() {
+		return this._modalMessage;
+	}
+
 	// api actions
 	async loadProducts(): Promise<void> {
 		this.products.clear();
@@ -70,14 +73,15 @@ export class AppState implements IAppState {
 		try {
 			const result = await this.api.orderProducts(this.order);
 			this.basketItems.clear();
+			this.events.emit(AppStateChanges.orderSuccess, { total: result.total });
 			this.events.emit(AppStateChanges.basketItems);
 			return result;
 		} catch (err: unknown) {
 			if (err instanceof Error) {
-				this.modalMessage = err.message;
+				this._modalMessage = err.message;
 			}
 			if (typeof err === 'string') {
-				this.modalMessage = err;
+				this._modalMessage = err;
 			}
 		}
 	}
@@ -112,8 +116,9 @@ export class AppState implements IAppState {
 			...this.orderInfo,
 			...orderInfo,
 		};
-		this.modalMessage = this.validateOrderInfo(orderInfo);
-		// this.onChange(AppStateChanges.orderInfo);
+
+		this._modalMessage = this.validateOrderInfo(this.orderInfo);
+		this.events.emit(AppStateChanges.orderInfo);
 	}
 
 	fillContacts(contacts: Partial<IContacts>): void {
@@ -121,8 +126,8 @@ export class AppState implements IAppState {
 			...this.contacts,
 			...contacts,
 		};
-		this.modalMessage = this.validateContacts(contacts);
-		// this.onChange(AppStateChanges.contacts);
+		this._modalMessage = this.validateContacts(this.contacts);
+		this.events.emit(AppStateChanges.contacts);
 	}
 
 	openModal(modal: AppModals, previewId?: string): void {
@@ -138,6 +143,13 @@ export class AppState implements IAppState {
 				if (this.basketItems.size === 0) {
 					throw new Error(`No products selected for purchase`);
 				}
+				this._modalMessage = this.validateOrderInfo(this.orderInfo);
+				break;
+			case AppModals.contacts:
+				if (this.validateOrderInfo(this.orderInfo)) {
+					throw new Error(`Order information is incorrect`);
+				}
+				this._modalMessage = this.validateContacts(this.contacts);
 				break;
 		}
 		if (this.currentModal !== modal) {
@@ -151,10 +163,14 @@ export class AppState implements IAppState {
 		}
 	}
 
-	protected validateOrderInfo(orderInfo: Partial<IOrderInfo>): string | null {
+	clearFormValidation() {
+		this._modalMessage = '';
+	}
+
+	protected validateOrderInfo(orderInfo: Partial<IOrderInfo>): string {
 		let error = '';
 
-		if (!orderInfo.method || !orderInfo.address) {
+		if (!orderInfo.payment || !orderInfo.address) {
 			error = 'Адрес доставки обязательное поле.';
 		}
 

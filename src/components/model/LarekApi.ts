@@ -25,6 +25,6 @@ export class LarekApi implements ILarekApi {
 	}
 
 	async orderProducts(order: IOrder): Promise<IOrderResult> {
-		return await this.baseApi.post<IOrderResult>('/order', order);
+		return await this.baseApi.post<IOrderResult>('/order', order, 'POST');
 	}
 }

@@ -15,7 +15,7 @@ export interface IProduct {
 }
 
 export interface IOrderInfo {
-	method: 'card' | 'cash';
+	payment: 'card' | 'cash';
 	address: string;
 }
 
@@ -63,6 +63,7 @@ export enum AppStateChanges {
 	basketItems = 'change:basketItems',
 	orderInfo = 'change:orderInfo',
 	contacts = 'change:contacts',
+	orderSuccess = 'change:orderSuccess,',
 }
 
 export enum UIActions {
@@ -73,7 +74,9 @@ export enum UIActions {
 	openOrderInfo = 'ui:openOrderInfo',
 	fillOrderInfo = 'ui:fillOrderInfo',
 	fillContacts = 'ui:fillContacts',
-	makeOrder = 'ui:makeOrder',
+	submitOrderInfo = 'ui:submitOrderInfo',
+	submitContacts = 'ui:submitContacts',
+	closeOrderSuccees = 'ui:closeOrderSuccess',
 	closeModal = 'ui:closeModal',
 	goBack = 'ui:goBack',
 }
@@ -95,7 +98,6 @@ export interface IAppState {
 	previousModal: AppModals;
 	currentModal: AppModals;
 	modalMessage: string;
-	isValid: boolean;
 
 	// Действия с API
 	loadProducts(): Promise<void>;
@@ -120,5 +122,9 @@ export interface ICardProps extends IProduct {
 export interface IBasketProps {
 	items: HTMLElement[];
 	isDisabled: boolean;
+	total: number;
+}
+
+export interface ISuccessProps {
 	total: number;
 }

@@ -28,13 +28,15 @@ export class OrderInfoForm extends Form<IOrderInfo> {
 
 		this._selectMethodButtons.addEventListener('click', (e) => {
 			const target = e.target as HTMLButtonElement;
-			const field = 'method';
-			const value = target.name;
-			super.onInputChange(field, value);
+			if (target.classList.contains('button_alt')) {
+				const field = 'payment';
+				const value = target.name;
+				super.onInputChange(field, value);
+			}
 		});
 	}
 
-	set method(value: 'card' | 'cash') {
+	set payment(value: 'card' | 'cash') {
 		const isCard = value === 'card';
 
 		this.toggleClass(this._cardButton, 'button_alt-active', isCard);

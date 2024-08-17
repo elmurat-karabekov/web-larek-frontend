@@ -11,12 +11,15 @@ import {
 	IOrderInfo,
 	IProduct,
 	UIActions,
+	IContacts,
 } from './types';
 import { API_URL, CDN_URL } from './utils/constants';
 import { cloneTemplate, ensureElement } from './utils/utils';
 import { Modal } from './components/view/common/Modal';
 import { Basket } from './components/view/Basket';
 import { OrderInfoForm } from './components/view/OrderInfoForm';
+import { ContactsForm } from './components/view/ContactsForm';
+import { Success } from './components/view/Success';
 
 const events = new EventEmitter();
 const baseApi = new Api(API_URL);
@@ -46,6 +49,8 @@ const orderInfoForm = new OrderInfoForm(
 	cloneTemplate(orderInfoTemplate),
 	events
 );
+const contactsForm = new ContactsForm(cloneTemplate(contactsTemplate), events);
+const success = new Success(cloneTemplate(successTemplate), events);
 
 // Глобальные контейнеры
 const page = new Page(document.body, events);
@@ -68,7 +73,7 @@ events.on(UIActions.cardButtonAction, (data: { id: string }) => {
 events.on(UIActions.openBasket, app.openModal.bind(app, AppModals.basket));
 
 events.on(UIActions.removeProduct, (data: { id: string }) => {
-	app.removeProductFromBasket.call(app, data.id);
+	app.removeProductFromBasket(data.id);
 });
 
 events.on(
@@ -76,11 +81,35 @@ events.on(
 	app.openModal.bind(app, AppModals.orderInfo)
 );
 
-events.on(UIActions.fillOrderInfo, (data: Partial<IOrderInfo>) => {
-	app.fillOrderInfo.call(app, data);
+events.on(UIActions.fillOrderInfo, (formData: Partial<IOrderInfo>) => {
+	app.fillOrderInfo(formData);
 });
 
-events.on(UIActions.closeModal, app.openModal.bind(app, AppModals.none));
+events.on(UIActions.submitOrderInfo, () => {
+	app.clearFormValidation();
+	app.openModal(AppModals.contacts);
+});
+
+events.on(UIActions.fillContacts, (formData: Partial<IContacts>) => {
+	app.fillContacts(formData);
+});
+
+events.on(UIActions.submitContacts, async () => {
+	app.clearFormValidation();
+	const orderResult = await app.orderProducts();
+	if (orderResult.id) {
+		app.openModal(AppModals.success);
+	}
+});
+
+events.on(UIActions.closeOrderSuccees, () => {
+	app.openModal(AppModals.none);
+});
+
+events.on(UIActions.closeModal, () => {
+	app.clearFormValidation();
+	app.openModal(AppModals.none);
+});
 
 // Subscribe to model events
 events.on(AppStateChanges.products, (products: IProduct[]) => {
@@ -111,9 +140,21 @@ events.on(AppStateChanges.basketItems, () => {
 events.on(AppStateChanges.orderInfo, () => {
 	orderInfoForm.render({
 		...app.orderInfo,
-		valid: Boolean(app.modalMessage),
+		valid: !app.modalMessage,
 		errors: app.modalMessage,
 	});
+});
+
+events.on(AppStateChanges.contacts, () => {
+	contactsForm.render({
+		...app.contacts,
+		valid: !app.modalMessage,
+		errors: app.modalMessage,
+	});
+});
+
+events.on(AppStateChanges.orderSuccess, (data: { total: number }) => {
+	success.total = data.total;
 });
 
 events.on(
@@ -152,9 +193,25 @@ events.on(AppModals.orderInfo, () => {
 	modal.render({
 		content: orderInfoForm.render({
 			...app.orderInfo,
-			valid: Boolean(app.modalMessage),
+			valid: !app.modalMessage,
 			errors: '',
 		}),
+	});
+});
+
+events.on(AppModals.contacts, () => {
+	modal.render({
+		content: contactsForm.render({
+			...app.contacts,
+			valid: !app.modalMessage,
+			errors: '',
+		}),
+	});
+});
+
+events.on(AppModals.success, () => {
+	modal.render({
+		content: success.render({}),
 	});
 });
 
