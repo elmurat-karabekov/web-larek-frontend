@@ -7,11 +7,10 @@ import { Page } from './components/view/Page';
 import './scss/styles.scss';
 import {
 	AppStateChanges,
-	AppModals,
 	IOrderInfo,
-	IProduct,
 	UIActions,
 	IContacts,
+	IBasketItem,
 } from './types';
 import { API_URL, CDN_URL } from './utils/constants';
 import { cloneTemplate, ensureElement } from './utils/utils';
@@ -26,12 +25,7 @@ const baseApi = new Api(API_URL);
 const larekApi = new LarekApi(baseApi, CDN_URL);
 
 // Модель данных приложения
-const app = new AppState(larekApi, events);
-
-// Чтобы мониторить все события, для отладки
-events.onAll(({ eventName, data }) => {
-	console.log(eventName, data);
-});
+const app = new AppState(events);
 
 // Все шаблоны
 const cardCatalogTemplate = ensureElement<HTMLTemplateElement>('#card-catalog');
@@ -57,8 +51,21 @@ const page = new Page(document.body, events);
 const modal = new Modal(ensureElement<HTMLElement>('#modal-container'), events);
 
 // Subscribe to UI events
+events.on(UIActions.openModal, () => {
+	page.locked = true;
+});
+
+events.on(UIActions.closeModal, () => {
+	page.locked = false;
+});
+
 events.on(UIActions.openPreview, (data: { id: string }) => {
-	app.openModal(AppModals.preview, data.id);
+	modal.render({
+		content: preview.render({
+			...app.products.get(data.id),
+			isInBasket: app.basketItems.has(data.id),
+		}),
+	});
 });
 
 events.on(UIActions.cardButtonAction, (data: { id: string }) => {
@@ -70,149 +77,110 @@ events.on(UIActions.cardButtonAction, (data: { id: string }) => {
 	preview.isInBasket = app.basketItems.has(data.id);
 });
 
-events.on(UIActions.openBasket, app.openModal.bind(app, AppModals.basket));
+events.on(UIActions.openBasket, () => {
+	modal.render({
+		content: basket.render({}),
+	});
+});
 
 events.on(UIActions.removeProduct, (data: { id: string }) => {
 	app.removeProductFromBasket(data.id);
 });
 
-events.on(
-	UIActions.openOrderInfo,
-	app.openModal.bind(app, AppModals.orderInfo)
-);
+events.on(UIActions.openOrderInfo, () => {
+	app.clearFormValidation();
+
+	modal.render({
+		content: orderInfoForm.render({
+			...app.orderInfo,
+			valid: app.formStatus.valid,
+			errors: app.formStatus.message,
+		}),
+	});
+});
 
 events.on(UIActions.fillOrderInfo, (formData: Partial<IOrderInfo>) => {
 	app.fillOrderInfo(formData);
+
+	orderInfoForm.render({
+		...app.orderInfo,
+		valid: app.formStatus.valid,
+		errors: app.formStatus.message,
+	});
 });
 
 events.on(UIActions.submitOrderInfo, () => {
 	app.clearFormValidation();
-	app.openModal(AppModals.contacts);
+
+	modal.render({
+		content: contactsForm.render({
+			...app.contacts,
+			valid: app.formStatus.valid,
+			errors: app.formStatus.message,
+		}),
+	});
 });
 
 events.on(UIActions.fillContacts, (formData: Partial<IContacts>) => {
 	app.fillContacts(formData);
+
+	contactsForm.render({
+		...app.contacts,
+		valid: app.formStatus.valid,
+		errors: app.formStatus.message,
+	});
 });
 
 events.on(UIActions.submitContacts, async () => {
-	app.clearFormValidation();
-	const orderResult = await app.orderProducts();
+	const orderResult = await larekApi.orderProducts(app.order);
 	if (orderResult.id) {
-		app.openModal(AppModals.success);
+		app.resetForms();
+		modal.render({
+			content: success.render({
+				total: orderResult.total,
+			}),
+		});
 	}
 });
 
 events.on(UIActions.closeOrderSuccees, () => {
-	app.openModal(AppModals.none);
-});
-
-events.on(UIActions.closeModal, () => {
-	app.clearFormValidation();
-	app.openModal(AppModals.none);
+	modal.close();
+	app.clearBasket();
 });
 
 // Subscribe to model events
-events.on(AppStateChanges.products, (products: IProduct[]) => {
-	page.catalog = products.map((product) => {
+events.on(AppStateChanges.appInitLoad, () => {
+	page.catalog = Array.from(app.products.values()).map((product) => {
 		const card = new Card(cloneTemplate(cardCatalogTemplate), events);
 		return card.render({
 			...product,
 		});
 	});
-});
-
-events.on(AppStateChanges.basketItems, () => {
-	page.counter = app.basketItems.size;
 
 	basket.render({
-		items: Array.from(app.basketItems.values()).map((item, idx) => {
+		items: [], // or Array.from(app.basketItems.values()) - if data persisted somewhere
+		isDisabled: true,
+		total: 0,
+	});
+});
+
+events.on(AppStateChanges.basketItems, (basketItems: IBasketItem[]) => {
+	page.counter = basketItems.length;
+
+	basket.render({
+		items: basketItems.map((item, idx) => {
 			const basketItem = new Card(cloneTemplate(cardBasketTemplate), events);
 			return basketItem.render({
 				...item,
 				basketItemIndex: idx + 1,
 			});
 		}),
-		isDisabled: app.basketItems.size < 1,
+		isDisabled: basketItems.length < 1,
 		total: app.basketTotal,
 	});
 });
 
-events.on(AppStateChanges.orderInfo, () => {
-	orderInfoForm.render({
-		...app.orderInfo,
-		valid: !app.modalMessage,
-		errors: app.modalMessage,
-	});
+larekApi.getProducts().then((products) => {
+	app.setProducts(products);
+	events.emit(AppStateChanges.appInitLoad);
 });
-
-events.on(AppStateChanges.contacts, () => {
-	contactsForm.render({
-		...app.contacts,
-		valid: !app.modalMessage,
-		errors: app.modalMessage,
-	});
-});
-
-events.on(AppStateChanges.orderSuccess, (data: { total: number }) => {
-	success.total = data.total;
-});
-
-events.on(
-	AppStateChanges.modal,
-	(appModal: { previous: AppModals; current: AppModals }) => {
-		page.locked = modal.open = appModal.current !== AppModals.none;
-	}
-);
-
-events.on(AppModals.preview, () => {
-	modal.render({
-		content: preview.render({
-			...app.products.get(app.previewProductId),
-			isInBasket: app.basketItems.has(app.previewProductId),
-		}),
-	});
-});
-
-events.on(AppModals.basket, () => {
-	modal.render({
-		content: basket.render({
-			items: Array.from(app.basketItems.values()).map((item, idx) => {
-				const basketItem = new Card(cloneTemplate(cardBasketTemplate), events);
-				return basketItem.render({
-					...item,
-					basketItemIndex: idx + 1,
-				});
-			}),
-			isDisabled: app.basketItems.size < 1,
-			total: app.basketTotal,
-		}),
-	});
-});
-
-events.on(AppModals.orderInfo, () => {
-	modal.render({
-		content: orderInfoForm.render({
-			...app.orderInfo,
-			valid: !app.modalMessage,
-			errors: '',
-		}),
-	});
-});
-
-events.on(AppModals.contacts, () => {
-	modal.render({
-		content: contactsForm.render({
-			...app.contacts,
-			valid: !app.modalMessage,
-			errors: '',
-		}),
-	});
-});
-
-events.on(AppModals.success, () => {
-	modal.render({
-		content: success.render({}),
-	});
-});
-
-app.loadProducts();

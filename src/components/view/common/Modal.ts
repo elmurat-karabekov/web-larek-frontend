@@ -5,7 +5,6 @@ import { IEvents } from '../../base/events';
 
 interface IModalData {
 	content: HTMLElement;
-	open: boolean;
 }
 
 export class Modal extends Component<IModalData> {
@@ -22,7 +21,10 @@ export class Modal extends Component<IModalData> {
 
 		this._content = ensureElement<HTMLElement>('.modal__content', container);
 
-		this._closeButton.addEventListener('click', this.close.bind(this));
+		this._closeButton.addEventListener('click', (evt) => {
+			evt.stopPropagation();
+			this.close.call(this);
+		});
 		this.container.addEventListener('click', this.close.bind(this));
 		this._content.addEventListener('click', (event) => event.stopPropagation());
 	}
@@ -31,17 +33,33 @@ export class Modal extends Component<IModalData> {
 		this._content.replaceChildren(value);
 	}
 
-	set open(isOpen: boolean) {
-		this.toggleClass(this.container, 'modal_active', isOpen);
+	open() {
+		this.container.classList.add('modal_active');
+		document.addEventListener('keyup', this.handleEscUp.bind(this));
+		this.events.emit(UIActions.openModal);
 	}
 
 	close() {
+		this.container.classList.remove('modal_active');
 		this.content = null;
+		document.removeEventListener('keyup', this.handleEscUp.bind(this));
+
+		if (document.activeElement instanceof HTMLElement) {
+			document.activeElement.blur();
+		}
+
 		this.events.emit(UIActions.closeModal);
 	}
 
-	render(data: Partial<IModalData>): HTMLElement {
+	handleEscUp(evt: KeyboardEvent) {
+		if (evt.key === 'Escape') {
+			this.close();
+		}
+	}
+
+	render(data: IModalData): HTMLElement {
 		super.render(data);
+		this.open();
 		return this.container;
 	}
 }

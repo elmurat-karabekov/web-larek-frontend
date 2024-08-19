@@ -14,6 +14,12 @@ export interface IProduct {
 	price: number | null;
 }
 
+export interface IBasketItem {
+	id: string;
+	title: string;
+	price: number | null;
+}
+
 export interface IOrderInfo {
 	payment: 'card' | 'cash';
 	address: string;
@@ -23,6 +29,11 @@ export interface IContacts {
 	email: string;
 	phone: string;
 }
+
+export type TFormStatus = {
+	message: string;
+	valid: boolean;
+};
 
 export interface IOrder extends IOrderInfo, IContacts {
 	total: number;
@@ -46,24 +57,13 @@ export interface ILarekApi {
 	orderProducts: (order: IOrder) => Promise<IOrderResult>;
 }
 
-export enum AppModals {
-	preview = 'modal:preview',
-	basket = 'modal:basket',
-	orderInfo = 'modal:orderInfo',
-	contacts = 'modal:contacts',
-	success = 'modal:success',
-	none = 'modal:none',
-}
-
 export enum AppStateChanges {
+	appInitLoad = 'change:appInitLoad',
 	products = 'change:products',
-	previewProduct = 'change:previewProduct',
-	modal = 'change:modal',
-	modalMessage = 'change:modalMessage',
 	basketItems = 'change:basketItems',
 	orderInfo = 'change:orderInfo',
 	contacts = 'change:contacts',
-	orderSuccess = 'change:orderSuccess,',
+	orderSuccess = 'change:orderSuccess',
 }
 
 export enum UIActions {
@@ -77,8 +77,8 @@ export enum UIActions {
 	submitOrderInfo = 'ui:submitOrderInfo',
 	submitContacts = 'ui:submitContacts',
 	closeOrderSuccees = 'ui:closeOrderSuccess',
+	openModal = 'ui:openModal',
 	closeModal = 'ui:closeModal',
-	goBack = 'ui:goBack',
 }
 
 // Интерфейс модели данных приложения
@@ -87,30 +87,22 @@ export interface IAppState {
 	products: Map<string, IProduct>;
 
 	// Заполняемые пользователем данные
-	basketItems: Map<string, IProduct>;
+	basketItems: Map<string, IBasketItem>;
 	basketTotal: number;
 	orderInfo: IOrderInfo;
 	contacts: IContacts;
 	order: IOrder;
 
 	// Состояние интерфейса
-	previewProductId: string | null;
-	previousModal: AppModals;
-	currentModal: AppModals;
-	modalMessage: string;
+	formStatus: TFormStatus;
 
-	// Действия с API
-	loadProducts(): Promise<void>;
-	orderProducts(): Promise<IOrderResult>;
-
-	// Пользовательские действия
+	// Методы для работы с данными
+	setProducts(products: IProduct[]): void;
 	addProductToBasket(id: string): void;
 	removeProductFromBasket(id: string): void;
+	clearBasket(): void;
 	fillOrderInfo(orderInfo: Partial<IOrderInfo>): void;
 	fillContacts(contacts: Partial<IContacts>): void;
-
-	// Методы для работы с модальными окнами
-	openModal(modal: AppModals, previewId?: string): void;
 }
 
 // Интерфейсы классов отображения

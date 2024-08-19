@@ -71,6 +71,8 @@ export class Card extends Component<ICardProps> {
 		if (this._cardCategory) {
 			this._cardCategory.textContent = category;
 
+			this._cardCategory.className = 'card__category';
+
 			switch (category) {
 				case 'софт-скил':
 					this._cardCategory.classList.add('card__category_soft');

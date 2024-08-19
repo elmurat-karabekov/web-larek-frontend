@@ -1,19 +1,18 @@
 import {
 	AppStateChanges,
-	AppModals,
 	IAppState,
 	IContacts,
-	ILarekApi,
 	IOrder,
 	IOrderInfo,
-	IOrderResult,
 	IProduct,
+	IBasketItem,
+	TFormStatus,
 } from '../../types';
 import { IEvents } from '../base/events';
 
 export class AppState implements IAppState {
 	products: Map<string, IProduct> = new Map<string, IProduct>();
-	basketItems: Map<string, IProduct> = new Map<string, IProduct>();
+	basketItems: Map<string, IBasketItem> = new Map<string, IBasketItem>();
 
 	orderInfo: IOrderInfo = {
 		payment: 'card', // default payment method
@@ -25,13 +24,12 @@ export class AppState implements IAppState {
 		phone: '',
 	};
 
-	previewProductId: string | null = null;
+	formStatus: TFormStatus = {
+		message: '',
+		valid: false,
+	};
 
-	previousModal: AppModals = AppModals.none;
-	currentModal: AppModals = AppModals.none;
-	protected _modalMessage = '';
-
-	constructor(protected api: ILarekApi, protected events: IEvents) {}
+	constructor(protected events: IEvents) {}
 
 	get basketTotal(): number {
 		return Array.from(this.basketItems.values()).reduce<number>(
@@ -51,50 +49,27 @@ export class AppState implements IAppState {
 		};
 	}
 
-	get modalMessage() {
-		return this._modalMessage;
-	}
-
-	// api actions
-	async loadProducts(): Promise<void> {
+	setProducts(products: IProduct[]): void {
 		this.products.clear();
-		const products = await this.api.getProducts();
-
 		for (const product of products) {
 			this.products.set(product.id, product);
 		}
-		this.events.emit(
-			AppStateChanges.products,
-			Array.from(this.products.values())
-		);
 	}
 
-	async orderProducts(): Promise<IOrderResult> {
-		try {
-			const result = await this.api.orderProducts(this.order);
-			this.basketItems.clear();
-			this.events.emit(AppStateChanges.orderSuccess, { total: result.total });
-			this.events.emit(AppStateChanges.basketItems);
-			return result;
-		} catch (err: unknown) {
-			if (err instanceof Error) {
-				this._modalMessage = err.message;
-			}
-			if (typeof err === 'string') {
-				this._modalMessage = err;
-			}
-		}
-	}
-
-	// user actions
 	addProductToBasket(id: string): void {
 		if (
 			this.products.has(id) &&
 			this.products.get(id).price &&
 			!this.basketItems.has(id)
 		) {
-			this.basketItems.set(id, this.products.get(id));
-			this.events.emit(AppStateChanges.basketItems);
+			this.basketItems.set(
+				id,
+				this.formatBasketItemData(this.products.get(id))
+			);
+			this.events.emit(
+				AppStateChanges.basketItems,
+				Array.from(this.basketItems.values())
+			);
 		} else {
 			throw new Error(
 				`Product ${id} does not exist or already in basket or is invaluable`
@@ -105,10 +80,30 @@ export class AppState implements IAppState {
 	removeProductFromBasket(id: string): void {
 		if (this.basketItems.has(id)) {
 			this.basketItems.delete(id);
-			this.events.emit(AppStateChanges.basketItems);
+			this.events.emit(
+				AppStateChanges.basketItems,
+				Array.from(this.basketItems.values())
+			);
 		} else {
 			throw new Error(`Product ${id} does not exist in the basket`);
 		}
+	}
+
+	clearBasket(): void {
+		this.basketItems.clear();
+		this.events.emit(AppStateChanges.basketItems, []);
+	}
+
+	resetForms(): void {
+		this.orderInfo = {
+			payment: 'card', // default payment method
+			address: '',
+		};
+
+		this.contacts = {
+			email: '',
+			phone: '',
+		};
 	}
 
 	fillOrderInfo(orderInfo: Partial<IOrderInfo>): void {
@@ -116,9 +111,7 @@ export class AppState implements IAppState {
 			...this.orderInfo,
 			...orderInfo,
 		};
-
-		this._modalMessage = this.validateOrderInfo(this.orderInfo);
-		this.events.emit(AppStateChanges.orderInfo);
+		this.validateOrderInfo(this.orderInfo);
 	}
 
 	fillContacts(contacts: Partial<IContacts>): void {
@@ -126,58 +119,32 @@ export class AppState implements IAppState {
 			...this.contacts,
 			...contacts,
 		};
-		this._modalMessage = this.validateContacts(this.contacts);
-		this.events.emit(AppStateChanges.contacts);
-	}
-
-	openModal(modal: AppModals, previewId?: string): void {
-		switch (modal) {
-			case AppModals.preview:
-				if (!previewId) {
-					this.previewProductId = null;
-					throw new Error(`No product selected for preview`);
-				}
-				this.previewProductId = previewId;
-				break;
-			case AppModals.orderInfo:
-				if (this.basketItems.size === 0) {
-					throw new Error(`No products selected for purchase`);
-				}
-				this._modalMessage = this.validateOrderInfo(this.orderInfo);
-				break;
-			case AppModals.contacts:
-				if (this.validateOrderInfo(this.orderInfo)) {
-					throw new Error(`Order information is incorrect`);
-				}
-				this._modalMessage = this.validateContacts(this.contacts);
-				break;
-		}
-		if (this.currentModal !== modal) {
-			this.currentModal = modal;
-			this.events.emit(AppStateChanges.modal, {
-				previous: this.previousModal,
-				current: this.currentModal,
-			});
-			this.events.emit(this.currentModal);
-			this.previousModal = this.currentModal;
-		}
+		this.validateContacts(this.contacts);
 	}
 
 	clearFormValidation() {
-		this._modalMessage = '';
+		this.formStatus = {
+			message: '',
+			valid: false,
+		};
 	}
 
-	protected validateOrderInfo(orderInfo: Partial<IOrderInfo>): string {
+	formatBasketItemData({ id, title, price, ...rest }: IProduct): IBasketItem {
+		return { id, title, price };
+	}
+
+	protected validateOrderInfo(orderInfo: Partial<IOrderInfo>): void {
 		let error = '';
 
 		if (!orderInfo.payment || !orderInfo.address) {
 			error = 'Адрес доставки обязательное поле.';
 		}
 
-		return error;
+		this.formStatus.message = error;
+		this.formStatus.valid = !error; // Boolean('') = false
 	}
 
-	protected validateContacts(contacts: Partial<IContacts>): string {
+	protected validateContacts(contacts: Partial<IContacts>): void {
 		const errors: string[] = [];
 		if (!contacts.email || !contacts.phone) {
 			errors.push('Email и телефон обязательные поля');
@@ -192,8 +159,15 @@ export class AppState implements IAppState {
 			errors.push('Некорректный телефон');
 		}
 		if (errors.length) {
-			return errors.join('. ') + '.';
+			this.formStatus = {
+				message: errors.join('. ') + '.',
+				valid: false,
+			};
+		} else {
+			this.formStatus = {
+				message: '',
+				valid: true,
+			};
 		}
-		return '';
 	}
 }
