@@ -132,14 +132,18 @@ events.on(UIActions.fillContacts, (formData: Partial<IContacts>) => {
 });
 
 events.on(UIActions.submitContacts, async () => {
-	const orderResult = await larekApi.orderProducts(app.order);
-	if (orderResult.id) {
-		app.resetForms();
-		modal.render({
-			content: success.render({
-				total: orderResult.total,
-			}),
-		});
+	try {
+		const orderResult = await larekApi.orderProducts(app.order);
+		if (orderResult.id) {
+			app.resetForms();
+			modal.render({
+				content: success.render({
+					total: orderResult.total,
+				}),
+			});
+		}
+	} catch (error) {
+		console.error('Error processing the order:', error);
 	}
 });
 
