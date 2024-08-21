@@ -13,7 +13,7 @@ import {
 	IBasketItem,
 } from './types';
 import { API_URL, CDN_URL } from './utils/constants';
-import { cloneTemplate, ensureElement } from './utils/utils';
+import { cloneTemplate, createElement, ensureElement } from './utils/utils';
 import { Modal } from './components/view/common/Modal';
 import { Basket } from './components/view/Basket';
 import { OrderInfoForm } from './components/view/OrderInfoForm';
@@ -184,7 +184,17 @@ events.on(AppStateChanges.basketItems, (basketItems: IBasketItem[]) => {
 	});
 });
 
-larekApi.getProducts().then((products) => {
-	app.setProducts(products);
-	events.emit(AppStateChanges.appInitLoad);
-});
+larekApi
+	.getProducts()
+	.then((products) => {
+		app.setProducts(products);
+		events.emit(AppStateChanges.appInitLoad);
+	})
+	.catch((error) => {
+		console.error(`Initial loading of products failed: ${error}`);
+		page.catalog = [
+			createElement<HTMLParagraphElement>('p', {
+				textContent: 'Не получилось загрузить каталог товаров :(',
+			}) as HTMLElement,
+		];
+	});
